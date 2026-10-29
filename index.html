@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three.js Galaxy Animation</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05060f; overflow: hidden; }
+  canvas { display: block; }
+  #go { position: fixed; top: 16px; right: 16px; padding: 10px 18px; border-radius: 20px; border: 1px solid #5a6ad8; background: rgba(40,50,120,.75); color: #fff; font: 600 14px system-ui, sans-serif; text-decoration: none; backdrop-filter: blur(4px); }
+  #go:hover { background: #4a5ae0; }
+  #hint { position: fixed; left: 16px; bottom: 12px; color: #8a93b8; font: 13px system-ui, sans-serif; pointer-events: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<a id="go" href="space.html">🚀 태양계 보러가기</a>
+<div id="hint">드래그: 회전 · 휠: 확대/축소</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05060f, 0.025);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 7, 16);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.6;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.1, 0.7, 0.1));
+
+// --- Spiral galaxy particles ---
+const COUNT = 30000, ARMS = 4, RADIUS = 14;
+const pos = new Float32Array(COUNT * 3), col = new Float32Array(COUNT * 3);
+const inner = new THREE.Color('#ffb36b'), outer = new THREE.Color('#4a7dff');
+for (let i = 0; i < COUNT; i++) {
+  const r = Math.pow(Math.random(), 1.6) * RADIUS;
+  const a = (i % ARMS) / ARMS * Math.PI * 2 + r * 0.55;
+  const spread = () => (Math.random() - 0.5) * Math.pow(Math.random(), 2) * (0.6 + r * 0.25);
+  pos.set([Math.cos(a) * r + spread(), spread() * 0.6, Math.sin(a) * r + spread()], i * 3);
+  const c = inner.clone().lerp(outer, r / RADIUS);
+  col.set([c.r, c.g, c.b], i * 3);
+}
+const galaxyGeo = new THREE.BufferGeometry();
+galaxyGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+galaxyGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+const galaxy = new THREE.Points(galaxyGeo, new THREE.PointsMaterial({
+  size: 0.06, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+}));
+scene.add(galaxy);
+
+// --- Core: torus knot ---
+const knot = new THREE.Mesh(
+  new THREE.TorusKnotGeometry(1.2, 0.35, 220, 32),
+  new THREE.MeshStandardMaterial({ color: 0xff7ac8, emissive: 0xff2d95, emissiveIntensity: 0.9, metalness: 0.6, roughness: 0.25 })
+);
+const wire = new THREE.Mesh(
+  new THREE.TorusKnotGeometry(1.2, 0.37, 120, 16),
+  new THREE.MeshBasicMaterial({ color: 0x7fe9ff, wireframe: true, transparent: true, opacity: 0.35 })
+);
+scene.add(knot, wire);
+scene.add(new THREE.PointLight(0xffffff, 60, 40), new THREE.AmbientLight(0x404060, 1));
+
+// --- Orbiting planets with rings ---
+const planets = [];
+[[4, 0.35, 0x59f0ff, 0.9], [6.5, 0.5, 0xffd35c, 0.6], [9, 0.4, 0x9d7bff, 0.4]].forEach(([d, s, color, speed], i) => {
+  const pivot = new THREE.Group();
+  pivot.rotation.x = (i - 1) * 0.25;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(s, 32, 32),
+    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6 }));
+  m.position.x = d;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(d - 0.02, d + 0.02, 128),
+    new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.25 }));
+  ring.rotation.x = Math.PI / 2;
+  pivot.add(m, ring);
+  scene.add(pivot);
+  planets.push({ pivot, m, speed, s });
+});
+
+// --- Starfield backdrop ---
+const starPos = new Float32Array(1500 * 3);
+for (let i = 0; i < starPos.length; i++) starPos[i] = (Math.random() - 0.5) * 160;
+const stars = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(starPos, 3)),
+  new THREE.PointsMaterial({ size: 0.12, color: 0x9fb4ff, transparent: true, opacity: 0.7 }));
+scene.add(stars);
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const t = clock.getElapsedTime();
+  galaxy.rotation.y = t * 0.05;
+  knot.rotation.set(t * 0.4, t * 0.6, 0);
+  wire.rotation.copy(knot.rotation);
+  const pulse = 1 + Math.sin(t * 2) * 0.06;
+  knot.scale.setScalar(pulse); wire.scale.setScalar(pulse * 1.02);
+  planets.forEach(p => { p.pivot.rotation.y = t * p.speed; p.m.rotation.y = t * 2; });
+  stars.rotation.y = -t * 0.01;
+  controls.update();
+  composer.render();
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
