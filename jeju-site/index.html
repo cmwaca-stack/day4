@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="설문대할망, 자청비, 영등할망… 신들의 섬 제주의 신화와 풍경을 만나 보세요." />
+  <title>탐라 이야기 · 신들의 섬 제주</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍊</text></svg>" />
+</head>
+<body>
+  <div id="setup-banner" hidden></div>
+
+  <header class="nav">
+    <a class="logo" href="#top">🍊 탐라 이야기</a>
+    <nav class="links">
+      <a href="#myth">신화</a>
+      <a href="#gallery">갤러리</a>
+      <a href="#/my" id="nav-my" hidden>내 즐겨찾기</a>
+    </nav>
+    <div class="auth" id="auth-area"></div>
+  </header>
+
+  <main>
+    <section id="home-view">
+      <section id="top" class="hero">
+        <div class="hero-inner">
+          <p class="eyebrow">Jeju Myth &amp; Nature</p>
+          <h1>신들의 섬,<br /><span>제주</span></h1>
+          <p class="sub">치마폭의 흙으로 한라산을 빚은 설문대할망부터 바람의 여신 영등할망까지.<br />1만 8천 신들이 사는 섬의 이야기를 만나 보세요.</p>
+          <div class="cta">
+            <a class="btn primary" href="#gallery">풍경 보러 가기</a>
+            <button class="btn ghost" id="hero-join">회원가입하고 즐겨찾기 모으기</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="myth" class="section">
+        <h2>🌌 제주의 신들과 이야기</h2>
+        <p class="lead">제주에는 하늘과 땅, 바다와 바람마다 신이 깃들어 있다고 믿었어요.</p>
+        <div class="cards" id="myth-cards"></div>
+      </section>
+
+      <section id="gallery" class="section">
+        <h2>📸 제주 갤러리</h2>
+        <p class="lead">Pixabay의 사진으로 제주의 풍경을 둘러보세요. 마음에 드는 사진은 ♡ 를 눌러 저장해요 (로그인 필요).</p>
+        <div class="tabs" id="cat-tabs"></div>
+        <div class="grid" id="gallery-grid"></div>
+        <div class="more"><button class="btn ghost" id="more-btn" hidden>사진 더 보기</button></div>
+      </section>
+    </section>
+
+    <section id="my-view" class="section" hidden>
+      <h2>♥ 내 즐겨찾기</h2>
+      <p class="lead" id="my-lead"></p>
+      <div class="grid" id="my-grid"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>사진 제공 <a href="https://pixabay.com/" target="_blank" rel="noopener">Pixabay</a> · 회원 기능 <a href="https://supabase.com/" target="_blank" rel="noopener">Supabase</a> · 배포 Vercel</p>
+    <p class="small">제주 신화 이야기는 구전 설화를 쉽게 풀어 쓴 것으로, 지역마다 내용이 조금씩 다를 수 있어요.</p>
+  </footer>
+
+  <div class="modal" id="modal" hidden>
+    <div class="modal-box">
+      <button class="close" id="modal-close" aria-label="닫기">✕</button>
+      <h3 id="modal-title">로그인</h3>
+      <p class="modal-note" id="modal-note"></p>
+      <div class="seg">
+        <button id="tab-login" class="on">로그인</button>
+        <button id="tab-signup">회원가입</button>
+      </div>
+      <form id="auth-form" autocomplete="on">
+        <label id="nick-row" hidden>닉네임
+          <input type="text" id="nickname" maxlength="20" placeholder="예: 귤이" />
+        </label>
+        <label>이메일
+          <input type="email" id="email" required placeholder="you@example.com" autocomplete="email" />
+        </label>
+        <label>비밀번호 <small>(6자 이상)</small>
+          <input type="password" id="password" required minlength="6" autocomplete="current-password" />
+        </label>
+        <p class="form-msg" id="form-msg" role="alert"></p>
+        <button class="btn primary wide" id="submit-btn" type="submit">로그인</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" role="status"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
