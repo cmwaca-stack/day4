@@ -7,8 +7,12 @@
 <style>
   html, body { margin: 0; height: 100%; background: #05060f; overflow: hidden; }
   canvas { display: block; }
-  #go { position: fixed; top: 16px; right: 16px; padding: 10px 18px; border-radius: 20px; border: 1px solid #5a6ad8; background: rgba(40,50,120,.75); color: #fff; font: 600 14px system-ui, sans-serif; text-decoration: none; backdrop-filter: blur(4px); }
-  #go:hover { background: #4a5ae0; }
+  #go2 { top: 62px; }
+  #go3 { top: 108px; }
+  #go4 { top: 154px; }
+  #go5 { top: 200px; }
+  #go, #go2, #go3, #go4, #go5 { position: fixed; top: 16px; right: 16px; padding: 10px 18px; border-radius: 20px; border: 1px solid #5a6ad8; background: rgba(40,50,120,.75); color: #fff; font: 600 14px system-ui, sans-serif; text-decoration: none; backdrop-filter: blur(4px); }
+  #go:hover, #go2:hover, #go3:hover, #go4:hover, #go5:hover { background: #4a5ae0; }
   #hint { position: fixed; left: 16px; bottom: 12px; color: #8a93b8; font: 13px system-ui, sans-serif; pointer-events: none; }
 </style>
 <script type="importmap">
@@ -20,6 +24,10 @@
 </head>
 <body>
 <a id="go" href="space.html">🚀 태양계 보러가기</a>
+<a id="go2" href="jeju.html">🌋 제주도 보러가기</a>
+<a id="go3" href="game.html">🍊 귤이 게임 하기</a>
+<a id="go4" href="rpg.html">🌌 탐라의 신화 RPG</a>
+<a id="go5" href="transformer.html">🤖 AI 원리 쉽게 배우기</a>
 <div id="hint">드래그: 회전 · 휠: 확대/축소</div>
 <script type="module">
 import * as THREE from 'three';

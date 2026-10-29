@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI는 어떻게 말을 할까요? - 트랜스포머 이야기</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe9ff; font-family: "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; }
+  .hide { display: none !important; }
+  #top { position: fixed; top: 12px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+  #brand { background: rgba(255,255,255,.85); border-radius: 22px; padding: 8px 18px; font-size: 18px; font-weight: 800; color: #4a3a9a; box-shadow: 0 4px 14px rgba(80,60,160,.2); }
+  #top a { pointer-events: auto; background: rgba(255,255,255,.85); color: #4a3a9a; text-decoration: none; border-radius: 20px; padding: 8px 16px; font-weight: 700; font-size: 14px; }
+  #narr { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(980px, 94vw); background: rgba(255,255,255,.93); border-radius: 26px; padding: 14px 24px 12px; box-shadow: 0 10px 34px rgba(60,40,140,.3); }
+  #sceneName { font-size: 15px; font-weight: 800; color: #ff7a3a; letter-spacing: 1px; }
+  #line { font-size: clamp(19px, 2.6vw, 30px); line-height: 1.5; color: #2b2b4a; font-weight: 700; min-height: 2.9em; margin: 4px 0 8px; }
+  #line b { color: #e0306a; background: #fff0f5; border-radius: 8px; padding: 0 6px; }
+  #ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #ctl button { border: none; border-radius: 16px; padding: 8px 16px; font-size: 15px; font-weight: 800; cursor: pointer; background: #e6defc; color: #4a3a9a; font-family: inherit; }
+  #ctl button:hover { background: #d4c8fa; } #ctl button.main { background: linear-gradient(#8a6cff, #5a3ae0); color: #fff; } #ctl button.off { opacity: .5; }
+  #dots { display: flex; gap: 7px; margin-left: auto; } #dots i { width: 13px; height: 13px; border-radius: 50%; background: #d9d2f5; cursor: pointer; } #dots i.on { background: #ff7a3a; transform: scale(1.3); } #dots i.done { background: #7a5aea; }
+  #bar { height: 5px; background: #ece7fb; border-radius: 3px; margin-bottom: 8px; overflow: hidden; } #bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff8fab, #ffb86b); }
+  #s6 { position: fixed; left: 50%; bottom: 190px; transform: translateX(-50%); background: rgba(255,255,255,.95); border-radius: 22px; padding: 10px 20px; display: flex; gap: 18px; align-items: center; box-shadow: 0 6px 20px rgba(60,40,140,.25); font-weight: 800; color: #2b2b4a; flex-wrap: wrap; justify-content: center; }
+  #s6 input { width: 200px; accent-color: #ff7a3a; } #s6 button { border: none; border-radius: 18px; padding: 10px 22px; font-size: 20px; font-weight: 800; background: linear-gradient(#ffcf5a, #ff9a2a); color: #3a2000; cursor: pointer; font-family: inherit; }
+  #start { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; text-align: center; background: radial-gradient(circle at 50% 40%, #fff6e8, #bfe0ff); }
+  #start h1 { font-size: clamp(34px, 6vw, 64px); margin: 0; color: #4a3a9a; } #start h1 span { color: #ff7a3a; }
+  #start p { font-size: 20px; color: #4a4a7a; margin: 10px 0 24px; line-height: 1.7; }
+  #start button { border: none; border-radius: 40px; padding: 16px 48px; font-size: 26px; font-weight: 800; background: linear-gradient(#8a6cff, #5a3ae0); color: #fff; cursor: pointer; box-shadow: 0 8px 0 #3a22a8, 0 14px 26px rgba(60,40,140,.35); font-family: inherit; }
+  #start button:active { transform: translateY(5px); box-shadow: 0 3px 0 #3a22a8; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="top"><div id="brand">🤖 AI의 비밀 · 트랜스포머 이야기</div><a href="index.html">홈으로</a></div>
+<div id="s6" class="hide"><span>🌡️ 온도 <b id="tv">1.0</b> <small style="font-weight:600;color:#6a6a9a">(낮음 = 안전한 말 · 높음 = 엉뚱한 말)</small></span><input id="temp" type="range" min="0.2" max="2.4" step="0.05" value="1"><button id="pickb">🎲 다음 말 뽑기!</button></div>
+<div id="narr"><div id="bar"><i id="barf"></i></div><div id="sceneName"></div><div id="line"></div>
+  <div id="ctl"><button id="prev">◀ 이전</button><button id="pause" class="main">⏸ 멈춤</button><button id="skip">⏭ 다음 문장</button><button id="next">다음 ▶</button><button id="vbtn">🔊 목소리</button><div id="dots"></div></div></div>
+<div id="start"><div><h1>AI는 어떻게<br><span>말을 할까요?</span></h1><p>ChatGPT · Gemini · Claude 속 비밀, <b>트랜스포머</b>!<br>유치원 친구도 이해할 수 있게 그림과 움직임으로 알려 줄게요 🎈<br><small>🔊 로봇 목소리가 나와요. 소리를 켜 주세요!</small></p><button id="go">▶ 시작하기</button></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const $ = id => document.getElementById(id);
+const TAU = Math.PI * 2, V3 = THREE.Vector3;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a = 0, b = 1) => a + Math.random() * (b - a);
+const PAL = ['#ff8fab', '#ffb86b', '#ffd23f', '#5fd39a', '#5ab8ff', '#a68aff'];
+
+// ---------- renderer / scene ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+{ const c = document.createElement('canvas'); c.width = 2; c.height = 256; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#9ed4ff'); gr.addColorStop(.6, '#dff1ff'); gr.addColorStop(1, '#fff1dc'); g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t; }
+scene.fog = new THREE.Fog(0xe4f3ff, 40, 90);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, .1, 300);
+const composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .28, .6, .88); composer.addPass(bloom); composer.addPass(new OutputPass());
+scene.add(new THREE.HemisphereLight(0xffffff, 0xffe2c0, 1.25));
+const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(6, 14, 10); scene.add(sun);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(70, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#fff6e6', roughness: 1 })); floor.position.y = -.01; scene.add(floor);
+{ for (let i = 1; i <= 6; i++) { const r = new THREE.Mesh(new THREE.RingGeometry(i * 5 - .06, i * 5 + .06, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#d9c8ff', transparent: true, opacity: .5 })); r.position.y = 0; scene.add(r); } }
+
+// ---------- helpers: text, blocks, tween ----------
+function textTex(text, { size = 96, color = '#2b2b4a', bg = null, pad = 34, weight = '800', stroke = null } = {}) {
+  const font = `${weight} ${size}px "Malgun Gothic","Apple SD Gothic Neo",sans-serif`, c = document.createElement('canvas'), x = c.getContext('2d');
+  x.font = font; const tw = Math.ceil(x.measureText(text).width), W = tw + pad * 2, Hh = Math.round(size * 1.5); c.width = W; c.height = Hh; x.font = font;
+  if (bg) { x.fillStyle = bg; const r = Hh / 2; x.beginPath(); x.moveTo(r, 0); x.arcTo(W, 0, W, Hh, r); x.arcTo(W, Hh, 0, Hh, r); x.arcTo(0, Hh, 0, 0, r); x.arcTo(0, 0, W, 0, r); x.fill(); }
+  x.textAlign = 'center'; x.textBaseline = 'middle'; if (stroke) { x.lineWidth = size * .12; x.strokeStyle = stroke; x.lineJoin = 'round'; x.strokeText(text, W / 2, Hh / 2 + size * .04); }
+  x.fillStyle = color; x.fillText(text, W / 2, Hh / 2 + size * .04);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return { tex: t, w: W, h: Hh };
+}
+// a label is a Group holding a Sprite, so scaling the group never squashes the text
+function label(text, height = 1, o = {}) { const { tex, w, h } = textTex(text, o), sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, fog: false, depthWrite: false })); sp.scale.set(height * w / h, height, 1); const g = new THREE.Group(); g.add(sp); g.userData = { h: height, sp }; return g; }
+function setLabel(g, text, o = {}) { const sp = g.userData.sp, { tex, w, h } = textTex(text, o); sp.material.map.dispose(); sp.material.map = tex; sp.material.needsUpdate = true; sp.scale.set(g.userData.h * w / h, g.userData.h, 1); }
+function block(text, color) {
+  const g = new THREE.Group(), w = Math.max(1.7, text.length * 1.0 + .9), mat = new THREE.MeshStandardMaterial({ color, roughness: .35 });
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(w, 1.25, 1), mat)); const n = Math.max(2, Math.round(w / 1.1));
+  for (let i = 0; i < n; i++) { const s = new THREE.Mesh(new THREE.CylinderGeometry(.23, .23, .18, 14), mat); s.position.set((i - (n - 1) / 2) * (w / n), .7, 0); g.add(s); }
+  const lt = textTex(text, { size: 90, color: '#fff', stroke: 'rgba(0,0,0,.3)', pad: 10 }); let pw = w * .92, ph = pw * lt.h / lt.w; if (ph > 1.05) { ph = 1.05; pw = ph * lt.w / lt.h; }
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: lt.tex, transparent: true })); p.position.z = .51; g.add(p); g.userData.w = w; return g;
+}
+const tw = new Set();
+function T(o, { pos, s, rot, k = 6 }) { const d = o.userData.T || (o.userData.T = {}); if (pos) d.pos = pos.clone ? pos.clone() : new V3(...pos); if (s !== undefined) d.s = s; if (rot !== undefined) d.rot = rot; d.k = k; tw.add(o); }
+function tick(dt) { tw.forEach(o => { const d = o.userData.T, f = 1 - Math.exp(-d.k * dt); if (d.pos) o.position.lerp(d.pos, f); if (d.s !== undefined) o.scale.setScalar(o.scale.x + (d.s - o.scale.x) * f); if (d.rot !== undefined) o.rotation.z += (d.rot - o.rotation.z) * f; }); }
+const popIn = (o, s = 1, k = 9) => { o.scale.setScalar(.001); T(o, { s, k }); };
+let timers = []; const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+
+// sparkles
+const NP = 900, pP = new Float32Array(NP * 3), pC = new Float32Array(NP * 3), pV = new Float32Array(NP * 3), pL = new Float32Array(NP), pA = new Float32Array(NP).fill(99), pB = new Float32Array(NP * 3);
+const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute('position', new THREE.BufferAttribute(pP, 3)); pGeo.setAttribute('color', new THREE.BufferAttribute(pC, 3));
+const pts = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: .35, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); pts.frustumCulled = false; scene.add(pts);
+let pI = 0; const _c = new THREE.Color();
+function burst(x, y, z, n, col, spd = 5, life = 1) { _c.set(col).multiplyScalar(1.3); for (let k = 0; k < n; k++) { const i = pI; pI = (pI + 1) % NP; const a = rand(0, TAU), b = Math.acos(rand(-1, 1)), s = spd * rand(.3, 1);
+  pP.set([x, y, z], i * 3); pV.set([Math.sin(b) * Math.cos(a) * s, Math.cos(b) * s + 1.5, Math.sin(b) * Math.sin(a) * s], i * 3); pL[i] = life * rand(.6, 1.2); pA[i] = 0; pB.set([_c.r, _c.g, _c.b], i * 3); } }
+function updateParticles(dt) { for (let i = 0; i < NP; i++) { if (pA[i] >= pL[i]) { pC[i * 3] = pC[i * 3 + 1] = pC[i * 3 + 2] = 0; continue; } pA[i] += dt; pV[i * 3 + 1] -= 4 * dt;
+  pP[i * 3] += pV[i * 3] * dt; pP[i * 3 + 1] += pV[i * 3 + 1] * dt; pP[i * 3 + 2] += pV[i * 3 + 2] * dt; const f = 1 - pA[i] / pL[i]; pC[i * 3] = pB[i * 3] * f; pC[i * 3 + 1] = pB[i * 3 + 1] * f; pC[i * 3 + 2] = pB[i * 3 + 2] * f; }
+  pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true; }
+
+// ---------- robot ----------
+function makeRobot() {
+  const g = new THREE.Group(), white = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .2, metalness: .1 }), blue = new THREE.MeshStandardMaterial({ color: '#6ec8ff', roughness: .3 }), org = new THREE.MeshStandardMaterial({ color: '#ffb86b', roughness: .4 });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(1.3, 32, 24), white); head.scale.set(1.15, 1, 1); g.add(head);
+  const screen = new THREE.Mesh(new THREE.CircleGeometry(.98, 32), new THREE.MeshStandardMaterial({ color: '#1b2b4a', roughness: .3 })); screen.scale.set(1.2, .82, 1); screen.position.z = 1.3; g.add(screen);
+  const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color('#5affff').multiplyScalar(2) });
+  const eyes = [-1, 1].map(s => { const e = new THREE.Mesh(new THREE.SphereGeometry(.18, 14, 10), glow); e.scale.set(1, 1.25, .35); e.position.set(s * .5, .16, 1.34); g.add(e); return e; });
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(.26, .05, 8, 24, Math.PI), glow); mouth.rotation.z = Math.PI; mouth.position.set(0, -.12, 1.34); g.add(mouth);
+  [-1, 1].forEach(s => { const ch = new THREE.Mesh(new THREE.CircleGeometry(.14, 16), new THREE.MeshBasicMaterial({ color: '#ff8fab' })); ch.position.set(s * .82, -.12, 1.33); ch.scale.set(1.3, .8, 1); g.add(ch); const ear = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, .3, 16), org); ear.rotation.z = Math.PI / 2; ear.position.set(s * 1.5, 0, 0); g.add(ear); });
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .6, 8), blue); ant.position.y = 1.55; g.add(ant); const ball = new THREE.Mesh(new THREE.SphereGeometry(.2, 14, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff8fab').multiplyScalar(2) })); ball.position.y = 1.95; g.add(ball);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(.95, 24, 18), blue); body.scale.set(1, .9, .85); body.position.y = -1.9; g.add(body);
+  const arms = [-1, 1].map(s => { const a = new THREE.Group(); a.position.set(s * 1.05, -1.5, 0); g.add(a); const m = new THREE.Mesh(new THREE.CapsuleGeometry(.2, .7, 6, 10), white); m.position.y = -.4; a.add(m); return a; });
+  g.userData = { eyes, mouth, arms, ball, mood: 'happy', blink: 3 };
+  g.userData.setMood = m => { const u = g.userData; u.mood = m; if (m === 'happy') { mouth.rotation.z = Math.PI; mouth.position.y = -.12; mouth.scale.set(1, 1, 1); } else if (m === 'sad') { mouth.rotation.z = 0; mouth.position.y = -.5; mouth.scale.set(.9, .9, 1); } else if (m === 'think') { mouth.rotation.z = Math.PI; mouth.position.y = -.25; mouth.scale.set(.5, .3, 1); } else if (m === 'wow') { mouth.rotation.z = Math.PI; mouth.position.y = -.2; mouth.scale.set(.7, 1.6, 1); } };
+  g.userData.anim = (t, dt) => { const u = g.userData; u.blink -= dt; const bl = u.blink < 0 && u.blink > -.12 ? .1 : 1; if (u.blink < -.12) u.blink = rand(2, 4); eyes.forEach(e => e.scale.y = 1.25 * bl); ball.position.y = 1.95 + Math.sin(t * 4) * .06; head.rotation.z = Math.sin(t * 1.5) * .04; };
+  return g;
+}
+
+// ---------- scenes ----------
+const SC = [];
+// 0. intro
+SC.push({ title: '0. 안녕, 로봇이야!', cam: { p: [0, 3, 15], l: [0, 2.2, 0] },
+  lines: ['안녕! 나는 말하는 로봇 친구 <b>로봇이</b>야 👋', '<b>ChatGPT</b>, <b>Gemini</b>, <b>Claude</b> 같은 AI 친구들은 모두 똑같은 비밀을 가지고 있어!', '그 비밀은 바로 <b>트랜스포머</b>라는 마법 같은 기술이야. 아주 쉽게 알려 줄게!'],
+  build(g) { const r = makeRobot(); r.position.set(0, 3.1, 0); r.scale.setScalar(1.15); g.add(r); const ti = label('AI는 어떻게 말을 할까요?', 1.3, { color: '#4a3a9a', stroke: '#ffffff' }); ti.position.set(0, 7.2, 0); popIn(ti); g.add(ti);
+    const logos = [['ChatGPT', '#10a37f'], ['Gemini', '#5a7aff'], ['Claude', '#ff8a4a']].map(([n, c], i) => { const s = label(n, 1.05, { color: '#fff', bg: c, size: 80 }); s.scale.multiplyScalar(.001); g.add(s); return s; });
+    return { r, logos, a: 0 }; },
+  phase(i, s) { if (i === 0) s.r.userData.setMood('happy'); if (i === 1) s.logos.forEach((l, k) => later(() => T(l, { s: 1, k: 6 }), k * 300)); if (i === 2) { s.r.userData.setMood('wow'); burst(0, 4, 0, 60, '#ffd23f', 7); } },
+  update(dt, t, s) { s.r.userData.anim(t, dt); s.r.position.y = 3.1 + Math.sin(t * 2) * .12; s.r.userData.arms[1].rotation.z = -2.3 + Math.sin(t * 6) * .4; s.a += dt * .5; s.logos.forEach((l, k) => { const a = s.a + k * TAU / 3; l.position.set(Math.cos(a) * 6.5, 3.4 + Math.sin(t * 2 + k) * .4, Math.sin(a) * 2.5); }); } });
+
+// 1. next-word guessing
+SC.push({ title: '1. 다음 말 맞히기 놀이', cam: { p: [0, 3.6, 17], l: [0, 2.8, 0] },
+  lines: ['AI의 첫 번째 비밀! AI는 <b>"다음에 올 말 맞히기 놀이"</b>를 엄청 잘하는 친구야.', '이 문장을 볼까? <b>"오늘 하늘은 ___"</b> 빈칸에 뭐가 올까?', '<b>"파랗다"</b>가 가장 잘 어울리지? AI도 어울리는 말일수록 <b>높은 점수</b>를 줘.', '<b>"맛있다"</b>는 하늘이랑 안 어울려서 점수가 아주 낮아.', '점수가 높은 말을 골라서 이어 말하면… <b>대화</b>가 되는 거야!'],
+  build(g) { const r = makeRobot(); r.position.set(-9.5, 2.6, 0); r.scale.setScalar(.8); r.userData.setMood('think'); g.add(r);
+    const row = [['오늘', PAL[0], -4.4], ['하늘은', PAL[1], -1], ['?', '#c9c9d9', 2.6]].map(([t, c, x]) => { const b = block(t, c); b.position.set(x, 6.8, 0); b.scale.setScalar(.001); g.add(b); return b; });
+    const cand = [['파랗다', .70, PAL[4]], ['맑다', .20, PAL[3]], ['높다', .08, PAL[2]], ['맛있다', .02, PAL[0]]], bars = cand.map(([t, p, c], i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 2), new THREE.MeshStandardMaterial({ color: c, roughness: .35 })); m.position.set(-4.8 + i * 3.2, .01, 0); m.scale.set(1, .001, 1); g.add(m);
+      const nm = label(t, .9, { color: '#2b2b4a' }); nm.position.set(m.position.x, -.9, 1.5); nm.scale.multiplyScalar(.001); g.add(nm); const pc = label(Math.round(p * 100) + '점', .8, { color: '#e0306a' }); pc.position.set(m.position.x, 1, 0); pc.scale.multiplyScalar(.001); g.add(pc); return { m, nm, pc, p }; });
+    return { r, row, bars, win: null }; },
+  phase(i, s) {
+    if (i === 1) s.row.forEach((b, k) => later(() => T(b, { s: 1 }), k * 250));
+    if (i === 2) { s.bars.forEach((b, k) => { later(() => { b.m.userData.h = Math.max(.25, b.p * 5.2); b.nm.scale.setScalar(1); b.pc.scale.setScalar(1); }, k * 300); }); s.r.userData.setMood('think'); }
+    if (i === 3) { const b = s.bars[3]; burst(b.m.position.x, 1.2, 0, 30, '#ff8fab', 5); s.shake = 1.5; s.r.userData.setMood('sad'); }
+    if (i === 4) { const w = block('파랗다', PAL[4]); w.position.set(s.bars[0].m.position.x, 6, 0); w.scale.setScalar(.001); s.row[0].parent.add(w); T(w, { pos: new V3(2.6, 6.8, .5), s: 1, k: 3 }); s.win = w; later(() => { s.row[2].visible = false; burst(2.6, 6.8, 0, 70, '#ffd23f', 8); s.r.userData.setMood('happy'); }, 1300); } },
+  update(dt, t, s) { s.r.userData.anim(t, dt); s.bars.forEach((b, i) => { const h = b.m.userData.h || .001, cur = b.m.scale.y; b.m.scale.y = lerp(cur, b.m.userData.h ? h : .001, Math.min(1, dt * 4)); b.m.position.y = b.m.scale.y / 2; b.pc.position.y = b.m.scale.y + .9; if (i === 3 && s.shake > 0) b.m.rotation.z = Math.sin(t * 30) * .08; }); if (s.shake > 0) s.shake -= dt; } });
+
+// 2. tokens
+SC.push({ title: '2. 글자를 레고 조각으로!', cam: { p: [0, 3.5, 16], l: [0, 2.5, 0] },
+  lines: ['컴퓨터는 글자를 읽을 줄 몰라. 그래서 문장을 작은 <b>레고 조각</b>으로 나눠.', '"나는 사과를 좋아해요"를 조각내 볼게. 짠!', '이 작은 조각을 <b>토큰</b>이라고 불러.', '조각마다 <b>번호표</b>가 붙어. 컴퓨터는 <b>숫자</b>만 알거든! 🔢'],
+  build(g) { const plank = label('나는 사과를 좋아해요', 2.2, { color: '#2b2b4a', bg: '#ffffff', size: 90 }); plank.position.set(0, 3.5, 0); popIn(plank); g.add(plank);
+    const words = ['나는', '사과', '를', '좋아', '해요'], bl = words.map((w, i) => { const b = block(w, PAL[i]); b.visible = false; g.add(b); return b; }), gap = .5, total = bl.reduce((a, b) => a + b.userData.w, 0) + gap * 4; let x = -total / 2;
+    bl.forEach(b => { b.userData.tx = x + b.userData.w / 2; x += b.userData.w + gap; }); const nums = [1204, 8831, 52, 3347, 901].map((n, i) => { const s = label(String(n), 1.1, { color: '#fff', bg: '#5a3ae0', size: 80 }); s.scale.multiplyScalar(.001); g.add(s); return s; });
+    const tok = label('이 조각 하나 = 토큰 🧩', 1.2, { color: '#e0306a', bg: '#fff0f5' }); tok.position.set(0, 7, 0); tok.scale.multiplyScalar(.001); g.add(tok); return { plank, bl, nums, tok }; },
+  phase(i, s) { if (i === 1) { T(s.plank, { s: .001, k: 8 }); s.bl.forEach((b, k) => { b.visible = true; b.position.set(0, 3.5, 0); b.scale.setScalar(.2); T(b, { pos: new V3(b.userData.tx, 2, 0), s: 1, k: 4 }); }); burst(0, 3.5, 0, 70, '#ffd23f', 8); }
+    if (i === 2) { T(s.tok, { s: 1 }); s.bl.forEach((b, k) => later(() => { b.position.y = 3; burst(b.position.x, 2.6, 0, 12, PAL[k], 3); }, k * 150)); }
+    if (i === 3) s.nums.forEach((n, k) => { later(() => { n.position.set(s.bl[k].userData.tx, 4.4, 0); T(n, { s: 1, k: 9 }); burst(n.position.x, 4.4, 0, 12, '#a68aff', 3); }, k * 300); }); },
+  update(dt, t, s) { s.bl.forEach((b, k) => { if (b.visible) b.position.y += (2 + Math.sin(t * 2 + k) * .12 - b.position.y) * Math.min(1, dt * 4) * (b.userData.T && b.userData.T.pos ? 0 : 1); }); } });
+
+// 3. embedding
+SC.push({ title: '3. 뜻 나라 지도', cam: { p: [0, 6, 17], l: [0, 1, 0], orbit: true },
+  lines: ['숫자만으로는 뜻을 알 수 없어. 그래서 조각마다 <b>뜻 나라</b>에 자리를 줘.', '비슷한 친구끼리는 <b>가까이</b> 앉아! 강아지, 고양이, 토끼는 이웃이야 🐶🐱🐰', '사과, 바나나, 딸기도 이웃이고, 자동차는 저 <b>멀리</b> 앉아 있어.', '이렇게 말의 뜻을 <b>위치(좌표)</b>로 바꾸는 걸 <b>임베딩</b>이라고 해!'],
+  build(g) { const groups = [{ c: [-6, 2, -2], col: '#ff9a4a', w: ['강아지', '고양이', '토끼'] }, { c: [6, 3, -3], col: '#ff5a6a', w: ['사과', '바나나', '딸기'] }, { c: [5, -1, 7], col: '#4a9aff', w: ['자동차', '버스', '기차'] }], balls = [];
+    groups.forEach((gr, gi) => { const hull = new THREE.Mesh(new THREE.SphereGeometry(3, 24, 16), new THREE.MeshBasicMaterial({ color: gr.col, transparent: true, opacity: .13, depthWrite: false })); hull.position.set(gr.c[0], gr.c[1] + 2, gr.c[2]); hull.scale.setScalar(.001); g.add(hull); gr.hull = hull;
+      gr.w.forEach((w, k) => { const m = new THREE.Mesh(new THREE.SphereGeometry(.7, 20, 14), new THREE.MeshStandardMaterial({ color: gr.col, roughness: .25, emissive: gr.col, emissiveIntensity: .25 })); m.position.set(rand(-.5, .5), 3, rand(-.5, .5)); m.userData.target = new V3(gr.c[0] + Math.cos(k * 2.1) * 1.6, gr.c[1] + 2 + Math.sin(k * 2.7) * .9, gr.c[2] + Math.sin(k * 2.1) * 1.6); m.userData.gi = gi; g.add(m); const l = label(w, 1, { color: '#2b2b4a', bg: 'rgba(255,255,255,.9)', size: 70 }); l.position.y = 1.3; m.add(l); balls.push(m); }); });
+    const axes = [[1, 0, 0, '#ff6a8a'], [0, 1, 0, '#5fd39a'], [0, 0, 1, '#5ab8ff']].map(([x, y, z, c]) => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new V3(-x * 11, -y * 2 + 2.5, -z * 11), new V3(x * 11, y * 9 + 2.5, z * 11)]), new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0 })); g.add(l); return l; });
+    const near = label('가까워요 💕', 1, { color: '#fff', bg: '#ff6a9a' }), far = label('멀어요 ↔', 1, { color: '#fff', bg: '#4a7aff' }), coord = label('(0.8, 2.1, -1.4)', .9, { color: '#4a3a9a', bg: '#fff' }); [near, far, coord].forEach(l => { l.scale.multiplyScalar(.001); g.add(l); });
+    const link = (a, b, c) => { const l = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: c })); l.visible = false; g.add(l); l.userData = { a, b }; return l; }; const l1 = link(balls[0], balls[1], '#ff6a9a'), l2 = link(balls[0], balls[6], '#4a7aff');
+    return { groups, balls, axes, near, far, coord, l1, l2, ang: 0 }; },
+  phase(i, s) { if (i === 1) { s.balls.filter(b => b.userData.gi === 0).forEach(b => T(b, { pos: b.userData.target, k: 2.5 })); T(s.groups[0].hull, { s: 1, k: 2 }); later(() => { s.l1.visible = true; T(s.near, { s: 1 }); }, 1800); }
+    if (i === 2) { s.balls.filter(b => b.userData.gi > 0).forEach(b => T(b, { pos: b.userData.target, k: 2.5 })); T(s.groups[1].hull, { s: 1, k: 2 }); T(s.groups[2].hull, { s: 1, k: 2 }); later(() => { s.l2.visible = true; T(s.far, { s: 1 }); }, 1800); }
+    if (i === 3) { s.axes.forEach(a => a.material.opacity = .55); T(s.coord, { s: 1 }); burst(-6, 4, -2, 40, '#a68aff', 5); } },
+  update(dt, t, s) { s.balls.forEach((b, i) => { if (!b.userData.T) b.position.y += Math.sin(t * 2 + i) * .004; }); const set = (l, a, b) => { l.geometry.setFromPoints([a, b]); }; [s.l1, s.l2].forEach(l => { if (l.visible) { const a = l.userData.a.position, b = l.userData.b.position; l.geometry.setFromPoints([a, b]); } });
+    s.near.position.copy(s.l1.userData.a.position).lerp(s.l1.userData.b.position, .5).add(new V3(0, 1.8, 0)); s.far.position.copy(s.l2.userData.a.position).lerp(s.l2.userData.b.position, .5).add(new V3(0, 1.8, 0)); s.coord.position.copy(s.balls[1].position).add(new V3(0, 3, 0)); } });
+
+// 4. attention
+SC.push({ title: '4. 서로 쳐다보기 (어텐션)', cam: { p: [0, 5, 20], l: [0, 2.5, 0] },
+  lines: ['이제 제일 중요한 비법이야! 문장 속 말들은 서로 <b>쳐다보면서</b> 누가 누구랑 관련 있는지 찾아.', '"그것은"이 궁금해. <b>그것이 뭘까?</b> 🤔', '"그것은"이 다른 말들을 하나하나 <b>둘러보고</b> 있어. 빛줄기가 보이니?', '"공을"을 가장 오래, 가장 <b>환하게</b> 쳐다보네! 그러니까 그것은 <b>공</b>이야. 정답!', '이렇게 <b>어디를 집중해서 볼지</b> 정하는 걸 <b>어텐션</b>이라고 해. 트랜스포머의 핵심 마법이야! ✨'],
+  build(g) { const words = ['강아지가', '공을', '물었어요', '그것은', '동그래요'], X = [-9.5, -4.8, 0, 4.8, 9.5], bl = words.map((w, i) => { const b = block(w, PAL[i]); b.position.set(X[i], 1.2, 0); b.scale.setScalar(.001); popIn(b); g.add(b); return b; });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.15, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd23f').multiplyScalar(2), transparent: true, opacity: 0, side: THREE.DoubleSide })); ring.position.set(X[3], 1.2, .6); g.add(ring);
+    const src = 3, beams = []; for (let i = 0; i < 5; i++) { if (i === src) continue; const a = new V3(X[src], 2.1, 0), b = new V3(X[i], 2.1, 0), m = new V3().addVectors(a, b).multiplyScalar(.5); m.y = 5 + Math.abs(X[i] - X[src]) * .28; const curve = new THREE.QuadraticBezierCurve3(a, m, b);
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(30)), new THREE.LineBasicMaterial({ color: '#ff6a9a', transparent: true, opacity: 0 })); g.add(line);
+      const dots = Array.from({ length: 10 }, () => { const d = new THREE.Mesh(new THREE.SphereGeometry(.16, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd23f').multiplyScalar(2) })); d.visible = false; g.add(d); return d; });
+      const pc = label('0%', .8, { color: '#e0306a', bg: '#fff' }); pc.position.copy(curve.getPoint(.5)).add(new V3(0, .8, 0)); pc.scale.multiplyScalar(.001); g.add(pc); beams.push({ i, curve, line, dots, w: 0, tw: 0, pc }); }
+    const flash = new THREE.PointLight(0xffd23f, 0, 14); flash.position.set(X[3], 3, 3); g.add(flash); return { bl, ring, beams, X, flash, show: false }; },
+  phase(i, s) { if (i === 1) { s.ring.material.opacity = .9; burst(s.X[3], 1.6, 1, 30, '#ffd23f', 4); } if (i === 2) { s.show = true; s.beams.forEach(b => b.tw = .22); }
+    if (i === 3) { s.beams.forEach(b => b.tw = b.i === 1 ? .6 : b.i === 2 ? .13 : .1); burst(s.X[1], 1.6, 1, 40, '#ff6a9a', 5); }
+    if (i === 4) { burst(0, 4, 0, 80, '#a68aff', 9); } },
+  update(dt, t, s) { s.ring.rotation.z += dt; s.ring.scale.setScalar(1 + Math.sin(t * 5) * .04); s.beams.forEach(b => { b.w = lerp(b.w, b.tw, Math.min(1, dt * 2.5)); b.line.material.opacity = b.w * 1.4; const n = Math.round(b.w * 18); b.dots.forEach((d, k) => { d.visible = s.show && k < n; if (d.visible) { const u = (t * .55 + k / b.dots.length) % 1; d.position.copy(b.curve.getPoint(u)); d.scale.setScalar(.6 + b.w * 2.2); } });
+      if (s.show) { const sc = .001 + (b.w > .01 ? 1 : 0); if (b.pc.scale.x < .01 && b.w > .05) { b.pc.scale.setScalar(1); } if (b.pc.scale.x > .01 && Math.floor(t * 4) % 2 === 0) { const pct = Math.round(b.w * 100) + '%'; if (b.pc.userData.t !== pct) { b.pc.userData.t = pct; setLabel(b.pc, pct, { color: '#e0306a', bg: '#fff' }); } } } }); s.flash.intensity = s.show ? 12 + Math.sin(t * 6) * 4 : 0; } });
+
+// 5. layers
+SC.push({ title: '5. 층층이 쌓아요', cam: { p: [14, 7, 17], l: [0, 5, 0], orbit: true },
+  lines: ['한 번 쳐다보는 걸로 끝이 아니야. 이 쳐다보기를 <b>여러 층</b>으로 쌓아!', '아래층은 쉬운 걸 알아내고, 위층으로 갈수록 점점 더 <b>깊이 이해</b>해. 색이 바뀌는 게 보이니? 🌈', '한 층마다 <b>"쳐다보기"</b>와 <b>"생각하기"</b>를 해. 이 한 층을 <b>트랜스포머 블록</b>이라고 불러.', '큰 AI는 이런 층이 <b>수십 개</b>나 있어! 그래서 아주 똑똑해.'],
+  build(g) { const slabs = [], N = 8; for (let k = 0; k < 24; k++) { const col = new THREE.Color().setHSL(.58 + k * .012, .7, .65), m = new THREE.Mesh(new THREE.BoxGeometry(9, .35, 6), new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: .45, roughness: .2 })); const ed = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: '#ffffff' })); m.add(ed); m.position.y = .5 + k * 1.25; m.scale.setScalar(.001); m.visible = k < N; g.add(m); slabs.push(m); }
+    const orbs = Array.from({ length: 5 }, (_, i) => { const o = new THREE.Mesh(new THREE.SphereGeometry(.42, 16, 12), new THREE.MeshStandardMaterial({ color: PAL[i], emissive: PAL[i], emissiveIntensity: .5 })); o.position.set(-3 + i * 1.5, 0, 0); o.visible = false; g.add(o); return o; });
+    const att = label('👀 쳐다보기', .9, { color: '#fff', bg: '#ff6a9a' }), thk = label('💭 생각하기', .9, { color: '#fff', bg: '#5a7aff' }), blk = label('트랜스포머 블록 1층', 1.1, { color: '#4a3a9a', bg: '#fff' }), many = label('수십 층!', 1.6, { color: '#e0306a', bg: '#fff0f5' }); [att, thk, blk, many].forEach(l => { l.scale.multiplyScalar(.001); g.add(l); });
+    return { slabs, orbs, att, thk, blk, many, N, run: false, tt: 0, cnt: 8 }; },
+  phase(i, s) { if (i === 0) s.slabs.forEach((m, k) => { if (k < 8) later(() => T(m, { s: 1, k: 6 }), k * 200); }); if (i === 1) { s.run = true; s.orbs.forEach(o => o.visible = true); }
+    if (i === 2) { const m = s.slabs[3]; s.att.position.set(-6.8, m.position.y + .5, 0); s.thk.position.set(6.8, m.position.y + .5, 0); s.blk.position.set(0, m.position.y + 1.5, 3.5); [s.att, s.thk, s.blk].forEach(l => popIn(l)); burst(0, m.position.y, 0, 50, '#ffd23f', 6); }
+    if (i === 3) { [s.att, s.thk, s.blk].forEach(l => T(l, { s: .001 })); s.slabs.forEach((m, k) => { m.visible = true; if (k >= 8) later(() => T(m, { s: 1, k: 8 }), (k - 8) * 90); }); s.cnt = 24; s.many.position.set(0, 31, 0); later(() => popIn(s.many), 1500); } },
+  update(dt, t, s) { const top = s.cnt * 1.25 + .5; if (s.run) s.orbs.forEach((o, i) => { const u = ((t * .12 + i * .17) % 1), y = u * top; o.position.y = y; o.position.x = (-3 + i * 1.5) * (1 + Math.sin(u * 6 + i) * .08); const lv = Math.min(1, y / top); o.material.color.set(PAL[i]).lerp(new THREE.Color('#ffd23f'), lv); o.material.emissive.copy(o.material.color); s.slabs.forEach((m, k) => { if (m.visible && Math.abs(m.position.y - y) < .35) m.material.opacity = .9; }); });
+    s.slabs.forEach(m => { if (m.material.opacity > .46) m.material.opacity = lerp(m.material.opacity, .45, Math.min(1, dt * 4)); }); } });
+
+// 6. pick next word
+const CANDS = [[['좋아요', 3.0], ['맑아요', 2.6], ['추워요', 1.9], ['이상해요', 1.2], ['바나나', -1.5]], [['그래서', 2.8], ['우리', 2.5], ['공원에', 2.0], ['비가', .8], ['냠냠', -1.5]], [['놀러', 3.0], ['산책', 2.4], ['소풍', 2.2], ['숙제', .6], ['지구', -1]], [['가요', 3.2], ['가자', 2.7], ['갈래', 2.2], ['먹어요', .2], ['빵빵', -1.5]]];
+SC.push({ title: '6. 다음 말 뽑기와 온도', cam: { p: [0, 5, 19], l: [0, 3.5, 0] }, ui6: true,
+  lines: ['맨 꼭대기에 도착하면 AI는 <b>다음 말 후보</b>마다 점수를 매겨. 점수가 높을수록 뽑힐 확률도 커.', '그렇다고 항상 1등만 뽑진 않아. 주사위를 굴려서 뽑기 때문에 대답이 <b>조금씩 달라져!</b> 🎲', '<b>온도</b> 손잡이를 돌려 볼래? 낮으면 <b>똑같고 안전한</b> 말, 높으면 <b>창의적이고 엉뚱한</b> 말이 나와! 직접 뽑아 봐!', '뽑은 말을 문장 끝에 붙이고 또 <b>다음 말을 맞혀</b>. 이걸 계속 반복하면 긴 이야기가 완성돼!'],
+  build(g) { const bars = Array.from({ length: 5 }, (_, i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1, 1.9), new THREE.MeshStandardMaterial({ color: PAL[i], roughness: .35 })); m.position.set(-6.4 + i * 3.2, 0, 0); m.scale.set(1, .001, 1); g.add(m);
+      const nm = label('후보', .9, { color: '#2b2b4a' }); nm.position.set(m.position.x, -.9, 1.5); g.add(nm); nm.userData.t = '후보'; const pc = label('0%', .8, { color: '#e0306a' }); pc.userData.t = '0%'; g.add(pc); return { m, nm, pc, p: 0, hp: 0 }; });
+    const sent = new THREE.Group(); sent.position.set(-13, 7.4, 0); g.add(sent); const s = { bars, sent, set: 0, T: 1, enabled: false, words: [], x: 0, cooldown: 0, lt: 0, auto: 0 }; s.addWord = (txt, col, from) => { const b = block(txt, col), x = s.x + b.userData.w / 2; b.position.copy(from ? from.clone().sub(sent.position) : new V3(x, 0, 0)); b.scale.setScalar(.4); sent.add(b); T(b, { pos: new V3(x, 0, 0), s: 1, k: 4 }); s.x += b.userData.w + .35; s.words.push(b); };
+    s.addWord('오늘 날씨가', '#8a8aa8'); s.refresh = () => { CANDS[s.set].forEach(([w], i) => { setLabel(bars[i].nm, w, { color: '#2b2b4a' }); }); }; s.refresh(); return s; },
+  phase(i, s) { if (i === 0) { s.enabled = false; } if (i === 1) { later(() => s.pick(), 1200); } if (i === 2) { s.enabled = true; $('s6').classList.remove('hide'); } if (i === 3) { s.auto = 3; s.cooldown = 1; } },
+  update(dt, t, s) {
+    const T_ = +$('temp').value; s.T = T_; $('tv').textContent = T_.toFixed(2); const lg = CANDS[s.set].map(c => c[1] / T_), mx = Math.max(...lg), ex = lg.map(v => Math.exp(v - mx)), sm = ex.reduce((a, b) => a + b, 0); s.probs = ex.map(v => v / sm);
+    s.bars.forEach((b, i) => { const tgt = s.probs[i] * 7 + .15; b.hp = lerp(b.hp, tgt, Math.min(1, dt * 5)); b.m.scale.y = Math.max(.001, b.hp); b.m.position.y = b.hp / 2 + (b.jump || 0); b.pc.position.set(b.m.position.x, b.hp + 1.1 + (b.jump || 0), 0); b.nm.position.y = -.9; b.jump = lerp(b.jump || 0, 0, Math.min(1, dt * 4));
+      const txt = Math.round(s.probs[i] * 100) + '%'; s.lt += 0; if (b.pc.userData.t !== txt && Math.floor(t * 8) % 2 === 0) { b.pc.userData.t = txt; setLabel(b.pc, txt, { color: '#e0306a', bg: '#fff' }); } });
+    s.cooldown -= dt; if (s.auto > 0 && s.cooldown <= 0) { s.auto--; s.cooldown = 2.2; s.pick(); } },
+  extra(s) { s.pick = () => { if (s.picking) return; s.picking = true; let r = Math.random(), k = 0; for (; k < 4; k++) { r -= s.probs[k]; if (r <= 0) break; } const b = s.bars[k], w = CANDS[s.set][k][0]; b.jump = 1.5; burst(b.m.position.x, b.hp + 1, 0, 40, PAL[k], 6); const from = new V3(b.m.position.x, b.hp + 2, 0);
+      later(() => { s.addWord(w, PAL[k], from); if (s.set >= CANDS.length - 1) { later(() => { s.words.slice(1).forEach(x => s.sent.remove(x)); s.words.length = 1; s.x = s.words[0].userData.w + .35; s.set = 0; s.refresh(); s.picking = false; }, 2200); burst(0, 7, 0, 90, '#ffd23f', 9); } else { s.set++; s.refresh(); s.picking = false; } }, 700); }; } });
+
+// 7. training
+SC.push({ title: '7. 어떻게 똑똑해졌을까?', cam: { p: [0, 4.5, 18], l: [0, 3, 0] },
+  lines: ['AI는 어떻게 이렇게 똑똑해졌을까? 책을 <b>엄청, 엄청 많이</b> 읽었어! 📚', '책을 읽다가 일부러 빈칸을 두고 맞혀 봐. <b>"엄마가 ___를 먹어요"</b>', '틀리면 정답을 알려 줘. 그러면 머릿속 작은 <b>다이얼(숫자 손잡이)</b>을 살짝 돌려서 고쳐! 점점 맞히는 게 늘어나지?', '이걸 <b>수천억 번</b> 반복하면 정말 말을 잘하게 돼. 이게 바로 <b>딥러닝(깊은 공부)</b>이야!', '그 다음엔 사람과 대화하는 연습을 더 해서 <b>친절하고 도움이 되는</b> AI 친구가 되는 거야 💖'],
+  build(g) { const r = makeRobot(); r.position.set(0, 3.2, 0); r.scale.setScalar(1.1); g.add(r);
+    const knobs = Array.from({ length: 8 }, (_, i) => { const k = new THREE.Group(), a = i / 8 * TAU, m = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .3, 20), new THREE.MeshStandardMaterial({ color: PAL[i % 6], roughness: .3 })); m.rotation.x = Math.PI / 2; k.add(m); const n = new THREE.Mesh(new THREE.BoxGeometry(.08, .4, .08), new THREE.MeshBasicMaterial({ color: '#fff' })); n.position.set(0, .15, .2); k.add(n); k.position.set(Math.cos(a) * 5.6, 3.4 + Math.sin(a) * 3.2, -1); k.scale.setScalar(.001); g.add(k); return k; });
+    const quiz = label('엄마가 ____ 를 먹어요', 1.3, { color: '#2b2b4a', bg: '#fff' }); quiz.position.set(0, 7.9, 0); quiz.scale.multiplyScalar(.001); g.add(quiz); const wrong = label('자동차? ❌', 1, { color: '#fff', bg: '#ff5a6a' }), right = label('정답: 밥! ✅', 1, { color: '#fff', bg: '#3ac27a' }), hello = label('안녕! 무엇을 도와줄까? 😊', 1.1, { color: '#4a3a9a', bg: '#fff' }), cnt = label('1번', 1.4, { color: '#e0306a', bg: '#fff0f5' });
+    wrong.position.set(5, 5.6, 0); right.position.set(5, 5.6, 0); hello.position.set(0, 7.6, 0); cnt.position.set(0, 0.2, 2); [wrong, right, hello, cnt].forEach(l => { l.scale.multiplyScalar(.001); g.add(l); });
+    const bgb = new THREE.Mesh(new THREE.BoxGeometry(8, .5, .5), new THREE.MeshStandardMaterial({ color: '#e0daf5' })); bgb.position.set(0, -.4, 3); g.add(bgb); const fill = new THREE.Mesh(new THREE.BoxGeometry(8, .5, .55), new THREE.MeshStandardMaterial({ color: '#5fd39a', emissive: '#5fd39a', emissiveIntensity: .3 })); fill.position.set(-4, -.4, 3); fill.scale.x = .02; g.add(fill);
+    return { r, knobs, quiz, wrong, right, hello, cnt, fill, books: [], bt: 0, reading: true, acc: .05, accT: .05, phase: 0, counter: 0 }; },
+  phase(i, s) { s.phase = i; if (i === 0) { s.reading = true; s.r.userData.setMood('think'); } if (i === 1) { s.reading = false; T(s.quiz, { s: 1 }); later(() => { T(s.wrong, { s: 1 }); s.r.userData.setMood('sad'); burst(5, 5.6, 0, 30, '#ff5a6a', 4); }, 1800); later(() => { T(s.wrong, { s: .001 }); T(s.right, { s: 1 }); s.r.userData.setMood('happy'); burst(5, 5.6, 0, 40, '#3ac27a', 5); }, 4800); }
+    if (i === 2) { T(s.quiz, { s: .001 }); T(s.right, { s: .001 }); s.knobs.forEach((k, n) => later(() => T(k, { s: 1 }), n * 150)); s.accT = .6; s.r.userData.setMood('think'); }
+    if (i === 3) { s.accT = .97; T(s.cnt, { s: 1 }); s.counter = 1; s.r.userData.setMood('happy'); }
+    if (i === 4) { s.knobs.forEach(k => T(k, { s: .001 })); T(s.cnt, { s: .001 }); T(s.hello, { s: 1 }); burst(0, 7, 0, 80, '#ff8fab', 8); } },
+  update(dt, t, s) { s.r.userData.anim(t, dt); s.r.position.y = 3.2 + Math.sin(t * 2) * .1; s.acc = lerp(s.acc, s.accT, Math.min(1, dt * 1.2)); s.fill.scale.x = Math.max(.01, s.acc); s.fill.position.x = -4 + 4 * s.acc;
+    if (s.reading) { s.bt -= dt; if (s.bt <= 0) { s.bt = .4; const m = new THREE.Mesh(new THREE.BoxGeometry(1, .15, .75), new THREE.MeshStandardMaterial({ color: PAL[Math.floor(rand(0, 6))], roughness: .5 })); m.userData = { u: 0, a: rand(0, TAU), r: rand(11, 15) }; s.books.push(m); s.r.parent.add(m); } }
+    for (let i = s.books.length - 1; i >= 0; i--) { const b = s.books[i], d = b.userData; d.u += dt * .7; const k = d.u, rr = d.r * (1 - k); b.position.set(Math.cos(d.a) * rr, 3.2 + (1 - k) * (2 + Math.sin(d.a * 3) * 2) + Math.sin(k * Math.PI) * 2.5, Math.sin(d.a) * rr * .6 + 1); b.rotation.set(k * 6, k * 4, 0); b.scale.setScalar(1 - k * .7); if (k >= 1) { burst(0, 3.2, 1, 6, '#ffd23f', 2, .6); b.parent.remove(b); s.books.splice(i, 1); } }
+    s.knobs.forEach((k, i) => { k.rotation.z = Math.sin(t * (.6 + i * .15) + i) * (1.2 * (1 - s.acc * .6)); });
+    if (s.counter) { s.counter += dt; const stages = ['1번', '100번', '10,000번', '1,000,000번', '수천억 번!!'], idx = Math.min(4, Math.floor(s.counter / .9)); if (s.cnt.userData.t !== stages[idx]) { s.cnt.userData.t = stages[idx]; setLabel(s.cnt, stages[idx], { color: '#e0306a', bg: '#fff0f5' }); burst(0, 0.8, 2, 20, '#ffd23f', 4); } } } });
+
+// 8. wrap up
+SC.push({ title: '8. 정리해 볼까?', cam: { p: [0, 5, 19], l: [0, 3.3, 0] },
+  lines: ['정리해 볼까? 글을 <b>조각내고</b>, <b>숫자로 바꾸고</b>, <b>뜻 나라</b>에 앉히고, 서로 <b>쳐다보게</b> 하고, <b>층층이</b> 이해한 다음, <b>다음 말을 뽑아서</b> 대답해!', 'ChatGPT도, Gemini도, Claude도 모두 이 <b>트랜스포머</b> 원리를 써. 크기와 연습량이 다를 뿐이야.', '하지만 AI도 가끔은 <b>틀린 말을 그럴듯하게</b> 해! 중요한 건 꼭 <b>확인</b>하고, 어른이나 책에도 물어보자 🔎', '끝까지 들어 줘서 고마워! 이제 너도 <b>AI의 비밀</b>을 아는 친구야! 🎉'],
+  build(g) { const steps = [['✂️', '조각내기'], ['🔢', '숫자로'], ['🗺️', '뜻 나라'], ['👀', '쳐다보기'], ['🏢', '층층이'], ['🎲', '다음 말'], ['💬', '대답!']], cards = steps.map(([e, n], i) => { const c = new THREE.Group(), m = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.4, .35), new THREE.MeshStandardMaterial({ color: PAL[i % 6], roughness: .4, emissive: PAL[i % 6], emissiveIntensity: 0 })); c.add(m); const em = label(e, 1.5, { size: 110, pad: 4 }); em.position.set(0, .55, .3); c.add(em); const nm = label(n, .7, { color: '#fff', size: 70, stroke: 'rgba(0,0,0,.3)', pad: 6 }); nm.position.set(0, -.95, .3); c.add(nm);
+      c.position.set((i - 3) * 3.1, 3.4, 0); c.scale.setScalar(.001); popIn(c); g.add(c); c.userData.m = m; return c; }); const arrows = []; for (let i = 0; i < 6; i++) { const a = label('➜', .8, { color: '#4a3a9a', size: 80, pad: 0 }); a.position.set((i - 3) * 3.1 + 1.55, 3.4, 0); g.add(a); }
+    const r = makeRobot(); r.position.set(0, 9, 0); r.scale.setScalar(.6); g.add(r); return { cards, r, lit: -1, tt: 0, fw: false, ft: 0 }; },
+  phase(i, s) { if (i === 0) { s.tt = 0; s.lit = -1; } if (i === 3) { s.fw = true; s.r.userData.setMood('wow'); } },
+  update(dt, t, s) { s.r.userData.anim(t, dt); s.r.position.y = 9 + Math.sin(t * 2) * .15; s.tt += dt; if (s.lit < 6 && s.tt > .8 + (s.lit + 1) * .9) { s.lit++; const c = s.cards[s.lit]; c.userData.m.material.emissiveIntensity = .5; T(c, { s: 1.18, k: 6 }); burst(c.position.x, 3.4, 1, 24, PAL[s.lit % 6], 5); }
+    if (s.fw) { s.ft -= dt; if (s.ft <= 0) { s.ft = .35; burst(rand(-12, 12), rand(6, 14), rand(-4, 2), 50, pick(PAL), 9, 1.4); } } } });
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+// ---------- player (timeline) ----------
+let si = -1, li = 0, lt = 0, S = null, cur = null, grp = null, paused = false, auto = true, voiceOn = true, started = false, endT = 0;
+const camP = new V3(0, 3, 15), camL = new V3(0, 2, 0), camPT = new V3(), camLT = new V3(), clock = new THREE.Clock();
+let koVoice = null; function pickVoice() { try { koVoice = speechSynthesis.getVoices().find(v => v.lang && v.lang.toLowerCase().startsWith('ko')) || null; } catch (e) {} } if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text) { if (!voiceOn || !('speechSynthesis' in window)) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g, '').replace(/[🎲👋🔢🧩🤔✨🌈💖🔎🎉📚💕👀💭]/gu, '')); u.lang = 'ko-KR'; if (koVoice) u.voice = koVoice; u.pitch = 1.5; u.rate = .98; speechSynthesis.speak(u); } catch (e) {} }
+const plain = h => h.replace(/<[^>]+>/g, '');
+const dur = i => Math.max(3.4, plain(S.lines[i]).length * .2 + 1.6);
+function goScene(n) {
+  timers.forEach(clearTimeout); timers = []; tw.clear(); if (grp) { scene.remove(grp); } try { speechSynthesis.cancel(); } catch (e) {} $('s6').classList.add('hide'); endT = 0;
+  si = clamp(n, 0, SC.length - 1); S = SC[si]; grp = new THREE.Group(); scene.add(grp); cur = S.build(grp); if (S.extra) S.extra(cur); camPT.set(...S.cam.p); camLT.set(...S.cam.l); cur.orbit = !!S.cam.orbit; cur.oa = 0;
+  $('sceneName').textContent = S.title; [...$('dots').children].forEach((d, k) => d.className = k === si ? 'on' : k < si ? 'done' : ''); showLine(0);
+}
+function showLine(i) { li = i; lt = 0; $('line').innerHTML = S.lines[i]; S.phase(i, cur); say(S.lines[i]); }
+function nextLine() { if (li < S.lines.length - 1) showLine(li + 1); else if (si < SC.length - 1) goScene(si + 1); }
+SC.forEach((_, k) => { const d = document.createElement('i'); d.onclick = () => started && goScene(k); $('dots').appendChild(d); });
+$('prev').onclick = () => goScene(si - 1); $('next').onclick = () => goScene(si + 1); $('skip').onclick = nextLine;
+$('pause').onclick = () => { paused = !paused; $('pause').textContent = paused ? '▶ 계속' : '⏸ 멈춤'; if (paused) { try { speechSynthesis.cancel(); } catch (e) {} } else say(S.lines[li]); };
+$('vbtn').onclick = () => { voiceOn = !voiceOn; $('vbtn').classList.toggle('off', !voiceOn); $('vbtn').textContent = voiceOn ? '🔊 목소리' : '🔇 목소리'; if (!voiceOn) try { speechSynthesis.cancel(); } catch (e) {} else say(S.lines[li]); };
+$('pickb').onclick = () => { if (S && S.ui6 && cur.enabled) cur.pick(); };
+$('go').onclick = () => { $('start').classList.add('hide'); started = true; goScene(0); };
+addEventListener('keydown', e => { if (!started) return; if (e.code === 'ArrowRight') goScene(si + 1); else if (e.code === 'ArrowLeft') goScene(si - 1); else if (e.code === 'Space') { e.preventDefault(); $('pause').click(); } });
+
+camera.position.copy(camP); renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  if (started && S) {
+    if (!paused) { lt += dt; if (lt > dur(li)) { if (li < S.lines.length - 1) showLine(li + 1); else if (auto && si < SC.length - 1) { endT += dt; if (endT > 1.8) goScene(si + 1); } } }
+    $('barf').style.width = (((si + (li + Math.min(1, lt / dur(li))) / S.lines.length) / SC.length) * 100) + '%'; if (!paused) S.update(dt, t, cur); tick(dt); updateParticles(dt);
+    if (cur.orbit) { cur.oa += dt * .12; const r = Math.hypot(camPT.x, camPT.z), a0 = Math.atan2(camPT.x, camPT.z); camera.position.lerp(new V3(Math.sin(a0 + cur.oa) * r, camPT.y, Math.cos(a0 + cur.oa) * r), Math.min(1, dt * 3)); } else camera.position.lerp(camPT, Math.min(1, dt * 2.5));
+    camL.lerp(camLT, Math.min(1, dt * 3)); camera.lookAt(camL);
+  } else { camera.position.set(Math.sin(t * .2) * 3, 3, 15); camera.lookAt(0, 2, 0); }
+  composer.render();
+});
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); });
+</script>
+</body>
+</html>
