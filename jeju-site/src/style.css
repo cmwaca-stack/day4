@@ -125,3 +125,19 @@ form input:focus { outline: 2px solid var(--teal); border-color: transparent; }
 .cart-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
 .cart-foot .acts { display: flex; gap: 8px; }
 @media (max-width: 560px) { .cart-row { flex-wrap: wrap; } .cart-row img { width: 90px; } }
+
+/* ---------- 관람객 차트 ---------- */
+.vis { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 18px 16px 12px; }
+.vis-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.vis-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.vis-bars { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; align-items: end; height: 220px; }
+.vis-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 3px; }
+.vis-pair { display: flex; align-items: flex-end; gap: 3px; width: 100%; height: calc(100% - 22px); justify-content: center; }
+.vis-bar { width: 42%; max-width: 20px; border-radius: 4px 4px 0 0; min-height: 2px; background: var(--teal); transition: filter .12s; }
+.vis-bar.y2 { background: var(--gold); }
+.vis-bar:hover { filter: brightness(1.25); }
+.vis-m { font-size: 12px; color: var(--muted); height: 19px; }
+.vis-sum { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.vis-sum b { color: var(--text); }
+.vis-src { margin-top: 10px; }
+@media (max-width: 560px) { .vis-bars { gap: 3px; height: 180px; } .vis-m { font-size: 10px; } }

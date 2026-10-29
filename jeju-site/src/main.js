@@ -1,6 +1,7 @@
 import './style.css';
 import { supabase, hasSupabase } from './supabaseClient.js';
 import { searchImages, getImageById, hasPixabay } from './pixabay.js';
+import { getVisitors, hasVisitors, SITES } from './visitors.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -310,6 +311,50 @@ async function renderHero() {
   } catch { /* 기본 배경 사용 */ }
 }
 
+// ---------- 관광지 관람객 차트 ----------
+let visSite = SITES[0];
+let visRows = null;
+const fmt = (n) => n.toLocaleString('ko-KR');
+
+function renderVisTabs() {
+  $('#vis-tabs').innerHTML = SITES.map((s, i) => `<button class="tab ${s === visSite ? 'on' : ''}" data-i="${i}">${s.name}</button>`).join('');
+  document.querySelectorAll('#vis-tabs .tab').forEach((b) => {
+    b.onclick = () => { visSite = SITES[+b.dataset.i]; renderVisTabs(); drawVisitors(); };
+  });
+}
+
+function drawVisitors() {
+  const box = $('#vis-chart');
+  const years = [...new Set(visRows.map((r) => r.year))];
+  const [y1, y2] = years.length > 1 ? years.slice(-2) : [years[0], null];
+  const val = (y, m) => visRows.find((r) => r.year === y && r.month === m)?.[visSite.key];
+  const all = visRows.map((r) => r[visSite.key]).filter((v) => v != null);
+  const max = Math.max(...all, 1);
+  const bar = (y, m, cls) => {
+    const v = val(y, m);
+    if (v == null) return `<div class="vis-bar ${cls}" style="height:0" title="${y}년 ${m}월: 자료 없음"></div>`;
+    return `<div class="vis-bar ${cls}" style="height:${(v / max * 100).toFixed(1)}%" title="${y}년 ${m}월: ${fmt(v)}명"></div>`;
+  };
+  const cols = Array.from({ length: 12 }, (_, i) => i + 1).map((m) => `<div class="vis-col">
+    <div class="vis-pair">${bar(y1, m, '')}${y2 ? bar(y2, m, 'y2') : ''}</div><span class="vis-m">${m}월</span></div>`).join('');
+  const total = (y) => visRows.filter((r) => r.year === y).reduce((a, r) => a + r[visSite.key], 0);
+  const peak = visRows.reduce((p, r) => (r[visSite.key] > p[visSite.key] ? r : p), visRows[0]);
+  box.innerHTML = `<div class="vis-legend"><span><i style="background:var(--teal)"></i>${y1}년</span>${y2 ? `<span><i style="background:var(--gold)"></i>${y2}년</span>` : ''}</div>
+    <div class="vis-bars">${cols}</div>
+    <div class="vis-sum"><span>${y1}년 합계 <b>${fmt(total(y1))}명</b></span>${y2 ? `<span>${y2}년 합계(자료 있는 달까지) <b>${fmt(total(y2))}명</b></span>` : ''}<span>가장 붐빈 달 <b>${peak.year}년 ${peak.month}월 (${fmt(peak[visSite.key])}명)</b></span></div>`;
+}
+
+async function renderVisitors() {
+  const box = $('#vis-chart');
+  if (!hasVisitors) { box.innerHTML = '<p class="empty">공공데이터 인증키(VITE_JEJU_DATA_KEY)가 설정되면 차트가 나타나요.</p>'; return; }
+  box.innerHTML = '<p class="empty">관람객 자료를 불러오는 중…</p>';
+  try {
+    visRows = await getVisitors();
+    if (!visRows.length) { box.innerHTML = '<p class="empty">표시할 자료가 없어요.</p>'; return; }
+    renderVisTabs(); drawVisitors();
+  } catch (e) { box.innerHTML = `<p class="empty">자료를 불러오지 못했어요: ${esc(e.message)}</p>`; }
+}
+
 // ---------- 내 즐겨찾기 ----------
 async function renderMy() {
   const grid = $('#my-grid');
@@ -341,7 +386,7 @@ function route() {
 // ---------- 시작 ----------
 async function init() {
   showSetupBanner();
-  renderAuth(); renderTabs(); renderMyth(); renderHero(); renderGallery();
+  renderAuth(); renderTabs(); renderMyth(); renderHero(); renderGallery(); renderVisitors();
 
   $('#tab-login').onclick = () => openAuth('login', $('#modal-note').textContent);
   $('#tab-signup').onclick = () => openAuth('signup', $('#modal-note').textContent);
