@@ -107,3 +107,21 @@ form input:focus { outline: 2px solid var(--teal); border-color: transparent; }
   .links { order: 3; width: 100%; flex: none; }
   .section { padding: 40px 16px; }
 }
+
+/* ---------- 장바구니 ---------- */
+.cartbtn { position: absolute; top: 10px; right: 56px; width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0, 0, 0, .5); color: #fff; font-size: 19px; cursor: pointer; backdrop-filter: blur(4px); }
+.cartbtn.on { background: var(--gold); color: #2a1400; }
+.cartbtn:hover { transform: scale(1.1); }
+.badge { display: inline-block; min-width: 18px; padding: 1px 6px; margin-left: 4px; border-radius: 999px; background: var(--gold); color: #2a1400; font-size: 12px; font-weight: 700; text-align: center; }
+.cart-list { display: flex; flex-direction: column; gap: 12px; }
+.cart-row { display: flex; align-items: center; gap: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.cart-row img { width: 110px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; flex: none; }
+.cart-info { flex: 1; min-width: 0; font-size: 14px; color: var(--muted); }
+.cart-info b { display: block; color: var(--text); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qty { display: flex; align-items: center; gap: 8px; }
+.qty button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--text); font-size: 16px; cursor: pointer; }
+.qty button:hover { background: var(--gold); color: #2a1400; }
+.cart-del { border: none; background: transparent; color: var(--pink); cursor: pointer; font-size: 18px; }
+.cart-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.cart-foot .acts { display: flex; gap: 8px; }
+@media (max-width: 560px) { .cart-row { flex-wrap: wrap; } .cart-row img { width: 90px; } }

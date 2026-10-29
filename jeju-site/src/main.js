@@ -27,6 +27,7 @@ const MYTHS = [
 // ---------- 상태 ----------
 let user = null;
 let favIds = new Set();
+let cart = new Map(); // image_id -> 수량
 let cat = CATS[0];
 let page = 1;
 let authMode = 'login';
@@ -76,6 +77,15 @@ function renderAuth() {
     $('#open-signup').onclick = () => openAuth('signup');
   }
   $('#nav-my').hidden = !user;
+  $('#nav-cart').hidden = !user;
+  renderBadge();
+}
+
+function renderBadge() {
+  const total = [...cart.values()].reduce((a, b) => a + b, 0);
+  const b = $('#cart-badge');
+  b.textContent = total;
+  b.hidden = !total;
 }
 
 // ---------- 로그인 / 회원가입 모달 ----------
@@ -129,7 +139,7 @@ async function signOut() {
   if (!supabase) return;
   await supabase.auth.signOut();
   toast('로그아웃되었어요.');
-  if (location.hash === '#/my') location.hash = '#top';
+  if (location.hash === '#/my' || location.hash === '#/cart') location.hash = '#top';
 }
 
 // ---------- 즐겨찾기 ----------
@@ -154,11 +164,97 @@ async function toggleFav(img) {
   if (location.hash === '#/my') renderMy();
 }
 
+// ---------- 장바구니 ----------
+const CART_HINT = '앞서 schema.sql 을 실행했는지 확인해 주세요: ';
+
+async function loadCart() {
+  cart = new Map();
+  if (!supabase || !user) return;
+  const { data, error } = await supabase.from('cart_items').select('image_id,quantity');
+  if (error) { console.warn('장바구니를 불러오지 못했어요:', error.message); return; }
+  cart = new Map((data || []).map((r) => [Number(r.image_id), r.quantity]));
+}
+
+function markCartButtons(id) {
+  document.querySelectorAll(`.cartbtn[data-id="${id}"]`).forEach((b) => b.classList.toggle('on', cart.has(id)));
+}
+
+async function toggleCart(img) {
+  if (!user) return openAuth('login', '🛒 장바구니는 로그인한 뒤에 쓸 수 있어요.');
+  const has = cart.has(img.id);
+  const { error } = has
+    ? await supabase.from('cart_items').delete().eq('image_id', img.id)
+    : await supabase.from('cart_items').insert({ image_id: img.id, tags: img.tags, quantity: 1 });
+  if (error) return toast(CART_HINT + error.message);
+  has ? cart.delete(img.id) : cart.set(img.id, 1);
+  markCartButtons(img.id); renderBadge();
+  toast(has ? '장바구니에서 뺐어요.' : '🛒 장바구니에 담았어요.');
+  if (location.hash === '#/cart') renderCart();
+}
+
+async function setQty(id, qty) {
+  if (qty < 1 || qty > 99) return;
+  const { error } = await supabase.from('cart_items').update({ quantity: qty }).eq('image_id', id);
+  if (error) return toast(CART_HINT + error.message);
+  cart.set(id, qty); renderBadge(); renderCart();
+}
+
+async function removeFromCart(id) {
+  const { error } = await supabase.from('cart_items').delete().eq('image_id', id);
+  if (error) return toast(CART_HINT + error.message);
+  cart.delete(id); markCartButtons(id); renderBadge(); renderCart();
+}
+
+async function clearCart() {
+  if (!cart.size || !confirm('장바구니를 모두 비울까요?')) return;
+  const { error } = await supabase.from('cart_items').delete().eq('user_id', user.id);
+  if (error) return toast(CART_HINT + error.message);
+  const ids = [...cart.keys()];
+  cart = new Map(); ids.forEach(markCartButtons); renderBadge(); renderCart();
+}
+
+async function renderCart() {
+  const list = $('#cart-list');
+  const foot = $('#cart-foot');
+  $('#cart-lead').textContent = '';
+  foot.hidden = true;
+  if (!user) { list.innerHTML = '<p class="empty">로그인하면 담아 둔 사진이 여기에 모여요.</p>'; return; }
+  if (!cart.size) { list.innerHTML = '<p class="empty">장바구니가 비어 있어요. 갤러리에서 🛒 를 눌러 담아 보세요!</p>'; return; }
+  list.innerHTML = '<p class="empty">불러오는 중…</p>';
+  const ids = [...cart.keys()];
+  const imgs = (await Promise.all(ids.map((id) => imgCache[id] || getImageById(id)))).filter(Boolean);
+  imgs.forEach((i) => { imgCache[i.id] = i; });
+  if (!cart.size) return renderCart();
+  list.innerHTML = ids.map((id) => {
+    const i = imgCache[id];
+    const q = cart.get(id);
+    return `<div class="cart-row">
+      ${i ? `<img src="${esc(i.thumb)}" alt="${esc(i.tags)}" />` : '<div class="mimg" style="width:110px;height:82px;border-radius:10px"></div>'}
+      <div class="cart-info"><b>${esc(i?.tags || '사진 #' + id)}</b>${i ? esc(i.user) : ''}</div>
+      <div class="qty"><button data-act="minus" data-id="${id}" aria-label="수량 줄이기">−</button><span>${q}</span><button data-act="plus" data-id="${id}" aria-label="수량 늘리기">+</button></div>
+      <button class="cart-del" data-act="del" data-id="${id}" aria-label="삭제">🗑</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-act]').forEach((b) => {
+    const id = Number(b.dataset.id);
+    b.onclick = () => {
+      if (b.dataset.act === 'del') removeFromCart(id);
+      else setQty(id, cart.get(id) + (b.dataset.act === 'plus' ? 1 : -1));
+    };
+  });
+  const total = [...cart.values()].reduce((a, c) => a + c, 0);
+  $('#cart-lead').textContent = `${cart.size}종류의 사진을 담았어요.`;
+  $('#cart-total').textContent = `총 ${total}장`;
+  foot.hidden = false;
+}
+
 // ---------- 갤러리 ----------
 function card(img) {
   const on = favIds.has(img.id);
+  const inCart = cart.has(img.id);
   return `<figure class="photo">
     <a href="${esc(img.page)}" target="_blank" rel="noopener"><img src="${esc(img.thumb)}" alt="${esc(img.tags)}" loading="lazy" /></a>
+    <button class="cartbtn ${inCart ? 'on' : ''}" data-id="${img.id}" aria-label="장바구니">🛒</button>
     <button class="heart ${on ? 'on' : ''}" data-id="${img.id}" aria-label="즐겨찾기">${on ? '♥' : '♡'}</button>
     <figcaption>${esc(img.tags)} <small>· ${esc(img.user)}</small></figcaption>
   </figure>`;
@@ -166,6 +262,7 @@ function card(img) {
 
 function bindHearts(root, byId) {
   root.querySelectorAll('.heart').forEach((b) => { b.onclick = () => toggleFav(byId[b.dataset.id]); });
+  root.querySelectorAll('.cartbtn').forEach((b) => { b.onclick = () => toggleCart(byId[b.dataset.id]); });
 }
 
 const imgCache = {};
@@ -232,10 +329,13 @@ async function renderMy() {
 // ---------- 화면 전환(해시 라우터) ----------
 function route() {
   const isMy = location.hash === '#/my';
-  if (isMy && !user) { openAuth('login', '내 즐겨찾기는 로그인 후에 볼 수 있어요.'); location.hash = '#top'; return; }
-  $('#home-view').hidden = isMy;
+  const isCart = location.hash === '#/cart';
+  if ((isMy || isCart) && !user) { openAuth('login', `${isCart ? '장바구니는' : '내 즐겨찾기는'} 로그인 후에 볼 수 있어요.`); location.hash = '#top'; return; }
+  $('#home-view').hidden = isMy || isCart;
   $('#my-view').hidden = !isMy;
+  $('#cart-view').hidden = !isCart;
   if (isMy) { renderMy(); window.scrollTo(0, 0); }
+  if (isCart) { renderCart(); window.scrollTo(0, 0); }
 }
 
 // ---------- 시작 ----------
@@ -251,19 +351,21 @@ async function init() {
   $('#auth-form').addEventListener('submit', onSubmit);
   $('#hero-join').onclick = () => (user ? (location.hash = '#gallery') : openAuth('signup'));
   $('#more-btn').onclick = () => { page += 1; renderGallery(true); };
+  $('#cart-clear').onclick = clearCart;
+  $('#cart-order').onclick = () => toast('주문 기능은 준비 중이에요 🍊');
   addEventListener('hashchange', route);
 
   if (!supabase) return;
   const { data } = await supabase.auth.getSession();
   user = data.session?.user ?? null;
-  await loadFavs(); renderAuth(); renderGallery(); route();
+  await Promise.all([loadFavs(), loadCart()]); renderAuth(); renderGallery(); route();
 
-  // 로그인 / 로그아웃 / 토큰 갱신이 일어나면 화면을 다시 그려요
+  //로그인 / 로그아웃 / 토큰 갱신이 일어나면 화면을 다시 그려요
   supabase.auth.onAuthStateChange(async (_event, session) => {
     const prev = user?.id;
     user = session?.user ?? null;
     if (prev === user?.id) return;
-    await loadFavs(); renderAuth(); renderGallery(); route();
+    await Promise.all([loadFavs(), loadCart()]); renderAuth(); renderGallery(); route();
   });
 }
 init();
